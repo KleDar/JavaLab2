@@ -145,5 +145,79 @@ public class ExpressionEvaluator {
         return output.toString().trim().split("\\s+");
     }
 
+    /**
+     * Вычисляет значение выражения в постфиксной форме (ОПН)
+     * @param postfix выражение в постфиксной форме (массив токенов)
+     * @return результат вычисления
+     * @throws IllegalArgumentException если выражение некорректно
+     */
+    public static double evaluatePostfix(String[] postfix) throws IllegalArgumentException {
+        Stack<Double> stack = new Stack<>();
 
+        try {
+            for (String token : postfix) {
+                if (token.length() == 1 && isOperator(token.charAt(0))) {
+                    // Если токен - оператор, выполняем операцию
+                    char op = token.charAt(0);
+                    double right = stack.pop();
+                    double left = stack.pop();
+
+                    switch (op) {
+                        case '+':
+                            stack.push(left + right);
+                            break;
+                        case '-':
+                            stack.push(left - right);
+                            break;
+                        case '*':
+                            stack.push(left * right);
+                            break;
+                        case '/':
+                            if (right == 0) {
+                                throw new IllegalArgumentException("Деление на ноль");
+                            }
+                            stack.push(left / right);
+                            break;
+                        case '^':
+                            stack.push(Math.pow(left, right));
+                            break;
+                    }
+                } else {
+                    // Если токен - число, добавляем в стек
+                    try {
+                        stack.push(Double.parseDouble(token));
+                    } catch (NumberFormatException e) {
+                        throw new IllegalArgumentException("Недопустимое число: " + token);
+                    }
+                }
+            }
+
+            // В стеке должен остаться ровно один элемент - результат
+            if (stack.size() != 1) {
+                throw new IllegalArgumentException("Некорректное выражение");
+            }
+
+            return stack.pop();
+        } catch (EmptyStackException e) {
+            throw new IllegalArgumentException("Некорректное выражение: недостаточно операндов");
+        }
+    }
+
+    /**
+     * Вычисляет значение математического выражения
+     * @param expression строка с математическим выражением
+     * @return результат вычисления
+     * @throws IllegalArgumentException если выражение некорректно
+     */
+    public static double evaluate(String expression) throws IllegalArgumentException {
+        if (expression == null || expression.trim().isEmpty()) {
+            throw new IllegalArgumentException("Пустое выражение");
+        }
+
+        // Преобразуем в постфиксную форму
+        String[] postfix = infixToPostfix(expression);
+
+        // Вычисляем значение
+        return evaluatePostfix(postfix);
+    }
 }
