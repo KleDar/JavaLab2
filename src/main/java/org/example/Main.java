@@ -1,70 +1,51 @@
 package org.example;
 import java.util.Map;
 import java.util.HashMap;
-import org.example.ExpressionEvaluator;
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
+import java.util.Scanner;
+import java.util.Locale;
+
 public class Main {
     public static void main(String[] args) {
-        String[] testExpressions = {
-                "2 + 2",                          // Базовая арифметика
-                "3 * (4 + 5)",                     // Скобки
-                "sin(0) + cos(0)",                 // Тригонометрия
-                "exp(1) + tan(0)",                 // Экспонента и тригонометрия
-                "sqrt(16) + abs(-5)",              // Корень и модуль
-                "log(100) + ln(e^2)",              // Логарифмы
-                "2 * sin(pi/4)^2",                 // Использование pi
-                "e^(ln(5))",                       // Комбинация e и ln
-                "3 + * 4",                         // Некорректное выражение
-                "sqrt(-1)",                        // Ошибка вычисления
-                "unknown(5)",                      // Неизвестная функция
-                "2 * (3 + 4"                       // Незакрытая скобка
-        };
+        Locale.setDefault(Locale.US);
+        Scanner scanner = new Scanner(System.in);
+        scanner.useLocale(Locale.US);
 
-        System.out.println("ТЕСТИРОВАНИЕ КАЛЬКУЛЯТОРА");
-        System.out.println("========================");
-        //System.out.println("Доступные константы: " + ExpressionEvaluator.CONSTANTS.keySet());
-        //System.out.println("Доступные функции: " + FUNCTION_ARITY.keySet() + "\n");
+        System.out.println("Калькулятор выражений с поддержкой переменных и функций");
+        System.out.println("Примеры выражений: 'x + y', 'sin(a) + cos(b)', '2*pi*r'");
+        System.out.println("Для выхода введите 'exit'");
 
-        for (String expr : testExpressions) {
+        while (true) {
+            System.out.print("\nВведите выражение: ");
+            String input = scanner.nextLine().trim();
+
+            if (input.equalsIgnoreCase("exit")) {
+                break;
+            }
+
             try {
-                System.out.println("\nВыражение: " + expr);
 
-                // Вычисляем результат (константы будут заменены автоматически в infixToPostfix)
-                double result = ExpressionEvaluator.evaluate(expr);
+                Map<String, Double> variables = new HashMap<>();
+                String[] postfix = ExpressionEvaluator.infixToPostfix(input);
+                for (String token : postfix) {
+                    if (token.startsWith("VAR:")) {
+                        String varName = token.substring(4);
+                        if (!variables.containsKey(varName)) {
+                            System.out.print("Введите значение переменной " + varName + ": ");
+                            double value = scanner.nextDouble();
+                            scanner.nextLine();
+                            variables.put(varName, value);
+                        }
+                    }
+                }
+
+                double result = ExpressionEvaluator.evaluate(input, variables);
                 System.out.println("Результат: " + result);
-
-                // Дополнительно выводим постфиксную форму
-                String[] postfix = ExpressionEvaluator.infixToPostfix(expr);
-                System.out.println("Постфиксная форма: " + String.join(" ", postfix));
             } catch (IllegalArgumentException e) {
-                System.out.println("ОШИБКА: " + e.getMessage());
+                System.out.println("Ошибка: " + e.getMessage());
             }
         }
 
-        // Дополнительные тесты граничных случаев
-        String[] edgeCases = {
-                "",                                    // Пустая строка
-                "   ",                                 // Только пробелы
-                "2.5.3",                               // Неправильное число
-                "sin()",                               // Пустые аргументы
-                "sin(pi",                              // Незакрытая скобка
-                "5 + + 5",                             // Двойной оператор
-                "10e-2",                               // Научная нотация (не поддерживается)
-                "max(5,3)"                             // Функция с несколькими аргументами
-        };
-
-        System.out.println("\nТЕСТИРОВАНИЕ ГРАНИЧНЫХ СЛУЧАЕВ");
-        System.out.println("=============================");
-
-        for (String expr : edgeCases) {
-            try {
-                System.out.println("\nВыражение: '" + expr + "'");
-                double result = ExpressionEvaluator.evaluate(expr);
-                System.out.println("Результат: " + result);
-            } catch (IllegalArgumentException e) {
-                System.out.println("ОШИБКА: " + e.getMessage());
-            }
-        }
+        System.out.println("Работа калькулятора завершена");
+        scanner.close();
     }
 }

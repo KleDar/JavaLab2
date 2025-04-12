@@ -3,26 +3,30 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Stack;
 import java.util.EmptyStackException;
-import java.util.Stack;
+import java.util.*;
+import java.util.regex.Pattern;
 
 /**
- * Класс для разбора и вычисления математических выражений.
+ * Класс для вычисления математических выражений с поддержкой переменных, функций и констант.
+ * Поддерживает основные арифметические операции, тригонометрические функции и другие математические операции.
  */
 public class ExpressionEvaluator {
-
-    // Приоритеты операторов
     private static final Map<Character, Integer> OPERATOR_PRECEDENCE = new HashMap<>();
-    // Поддерживаемые функции
     private static final Map<String, Integer> FUNCTION_ARITY = new HashMap<>();
     private static final Map<String, Double> CONSTANTS = new HashMap<>();
+    private static final Map<String, Double> VARIABLES = new HashMap<>();
+    private static final Scanner scanner = new Scanner(System.in);
+    private static final Pattern VALID_VARIABLE_NAME = Pattern.compile("[a-zA-Z][a-zA-Z0-9]*");
+
     static {
+        // Инициализация операторов, функций и констант
         OPERATOR_PRECEDENCE.put('^', 4);
         OPERATOR_PRECEDENCE.put('*', 3);
         OPERATOR_PRECEDENCE.put('/', 3);
         OPERATOR_PRECEDENCE.put('+', 2);
         OPERATOR_PRECEDENCE.put('-', 2);
 
-        // Функции (имя -> количество аргументов)
+        // Функции
         FUNCTION_ARITY.put("sin", 1);
         FUNCTION_ARITY.put("cos", 1);
         FUNCTION_ARITY.put("tan", 1);
@@ -30,9 +34,9 @@ public class ExpressionEvaluator {
         FUNCTION_ARITY.put("acos", 1);
         FUNCTION_ARITY.put("atan", 1);
         FUNCTION_ARITY.put("sqrt", 1);
-        FUNCTION_ARITY.put("log", 1);  // десятичный логарифм
+        FUNCTION_ARITY.put("log", 1);
         FUNCTION_ARITY.put("ln", 1);
-        FUNCTION_ARITY.put("exp", 1);  // экспонента
+        FUNCTION_ARITY.put("exp", 1);
         FUNCTION_ARITY.put("abs", 1);
 
         // Константы
@@ -43,7 +47,7 @@ public class ExpressionEvaluator {
     /**
      * Проверяет, является ли символ оператором
      * @param c проверяемый символ
-     * @return true если символ является оператором, иначе false
+     * @return true, если символ является оператором, иначе false
      */
     private static boolean isOperator(char c) {
         return OPERATOR_PRECEDENCE.containsKey(c);
@@ -52,30 +56,67 @@ public class ExpressionEvaluator {
     /**
      * Проверяет, является ли символ цифрой или точкой
      * @param c проверяемый символ
-     * @return true если символ является цифрой или точкой, иначе false
+     * @return true, если символ является цифрой или точкой, иначе false
      */
     private static boolean isDigitOrDot(char c) {
         return Character.isDigit(c) || c == '.';
     }
 
+    /**
+     * Проверяет, является ли символ буквой
+     * @param c проверяемый символ
+     * @return true, если символ является буквой, иначе false
+     */
     private static boolean isLetter(char c) {
         return Character.isLetter(c);
     }
 
     /**
      * Проверяет, является ли строка именем функции
+     * @param token проверяемая строка
+     * @return true, если строка является именем функции, иначе false
      */
     private static boolean isFunction(String token) {
         return FUNCTION_ARITY.containsKey(token);
     }
+
+    /**
+     * Проверяет, является ли строка именем константы
+     * @param token проверяемая строка
+     * @return true, если строка является именем константы, иначе false
+     */
     private static boolean isConstant(String token) {
         return CONSTANTS.containsKey(token);
     }
+
     /**
-     * Преобразует инфиксное выражение в постфиксную форму (ОПН)
-     * @param expression математическое выражение в инфиксной форме
-     * @return массив строк, представляющий выражение в постфиксной форме
-     * @throws IllegalArgumentException если выражение содержит синтаксические ошибки
+     * Проверяет, является ли строка допустимым именем переменной
+     * @param name проверяемая строка
+     * @return true, если строка является допустимым именем переменной, иначе false
+     */
+    private static boolean isValidVariableName(String name) {
+        return VALID_VARIABLE_NAME.matcher(name).matches();
+    }
+
+    /**
+     * Получает значение переменной, запрашивая его у пользователя при необходимости
+     * @param name имя переменной
+     * @return значение переменной
+     */
+    private static double getVariableValue(String name) {
+        if (!VARIABLES.containsKey(name)) {
+            System.out.print("Введите значение переменной " + name + ": ");
+            double value = scanner.nextDouble();
+            VARIABLES.put(name, value);
+        }
+        return VARIABLES.get(name);
+    }
+
+    /**
+     * Преобразует инфиксное выражение в постфиксную форму (обратную польскую запись)
+     * @param expression инфиксное выражение
+     * @return массив токенов в постфиксной форме
+     * @throws IllegalArgumentException если выражение некорректно
      */
     public static String[] infixToPostfix(String expression) throws IllegalArgumentException {
         if (expression == null || expression.trim().isEmpty()) {
@@ -107,14 +148,14 @@ public class ExpressionEvaluator {
                 continue;
             }
 
-            // Обработка функций и переменных
+            // Обработка функций, констант и переменных
             if (isLetter(c)) {
                 if (!expectOperand) {
                     throw new IllegalArgumentException("Ожидается оператор");
                 }
 
                 StringBuilder token = new StringBuilder();
-                while (i < expression.length() && isLetter(expression.charAt(i))) {
+                while (i < expression.length() && (isLetter(expression.charAt(i)) || Character.isDigit(expression.charAt(i)))) {
                     token.append(expression.charAt(i));
                     i++;
                 }
@@ -130,6 +171,9 @@ public class ExpressionEvaluator {
                     }
                 } else if (isConstant(tokenStr)) {
                     output.append(CONSTANTS.get(tokenStr)).append(' ');
+                    expectOperand = false;
+                } else if (isValidVariableName(tokenStr)) {
+                    output.append("VAR:").append(tokenStr).append(' ');
                     expectOperand = false;
                 } else {
                     throw new IllegalArgumentException("Неизвестный идентификатор: " + tokenStr);
@@ -218,13 +262,25 @@ public class ExpressionEvaluator {
         return output.toString().trim().split("\\s+");
     }
 
-    public static double evaluatePostfix(String[] postfix) throws IllegalArgumentException {
+    /**
+     * Вычисляет значение выражения в постфиксной форме
+     * @param postfix массив токенов в постфиксной форме
+     * @param variables карта значений переменных
+     * @return результат вычисления выражения
+     * @throws IllegalArgumentException если выражение некорректно
+     */
+    public static double evaluatePostfix(String[] postfix, Map<String, Double> variables) throws IllegalArgumentException {
         Stack<Double> stack = new Stack<>();
 
         try {
             for (String token : postfix) {
-                if (token.length() == 1 && isOperator(token.charAt(0))) {
-                    // Обработка операторов
+                if (token.startsWith("VAR:")) {
+                    String varName = token.substring(4);
+                    if (!variables.containsKey(varName)) {
+                        throw new IllegalArgumentException("Не задано значение переменной: " + varName);
+                    }
+                    stack.push(variables.get(varName));
+                } else if (token.length() == 1 && isOperator(token.charAt(0))) {
                     char op = token.charAt(0);
                     double right = stack.pop();
                     double left = stack.pop();
@@ -240,7 +296,6 @@ public class ExpressionEvaluator {
                         case '^': stack.push(Math.pow(left, right)); break;
                     }
                 } else if (isFunction(token)) {
-                    // Обработка функций
                     double arg = stack.pop();
                     switch (token) {
                         case "sin": stack.push(Math.sin(arg)); break;
@@ -265,7 +320,6 @@ public class ExpressionEvaluator {
                         case "abs": stack.push(Math.abs(arg)); break;
                     }
                 } else {
-                    // Обработка чисел
                     try {
                         stack.push(Double.parseDouble(token));
                     } catch (NumberFormatException e) {
@@ -284,12 +338,19 @@ public class ExpressionEvaluator {
         }
     }
 
-    public static double evaluate(String expression) throws IllegalArgumentException {
+    /**
+     * Вычисляет значение инфиксного выражения
+     * @param expression инфиксное выражение
+     * @param variables карта значений переменных
+     * @return результат вычисления выражения
+     * @throws IllegalArgumentException если выражение некорректно
+     */
+    public static double evaluate(String expression, Map<String, Double> variables) throws IllegalArgumentException {
         if (expression == null || expression.trim().isEmpty()) {
             throw new IllegalArgumentException("Пустое выражение");
         }
-
+        Map<String, Double> localVariables = new HashMap<>(variables);
         String[] postfix = infixToPostfix(expression);
-        return evaluatePostfix(postfix);
+        return evaluatePostfix(postfix, localVariables);
     }
 }
